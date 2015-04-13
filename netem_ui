@@ -1,0 +1,196 @@
+#! /usr/bin/python
+#-*- coding:utf-8 -*-
+
+import Tkinter
+import ttk
+import os
+from Tkinter import *
+
+
+top=Tkinter.Tk()
+
+top.geometry('400x330+0+0') 
+Label(top,text="Netem").grid(row=0, column=1)
+#get the network interface card
+os.system("ifconfig -s > temp")
+f = open("temp")       
+line=f.readline()
+line=f.readline()
+network_value=[]
+while line:
+    line=str(line).split()
+    network_value.append(line[0])
+    line=f.readline()
+f.close()
+labelframe1=LabelFrame(top,text="网卡选择：",width=300)
+labelframe1.grid(columnspan=3)
+network=ttk.Combobox(labelframe1,state="readonly",values=network_value,width=56)
+network.set(network_value[0])
+network.grid(row=0, column=1)
+
+labelframe2=LabelFrame(top,text="基本功能：",width=300)
+labelframe2.grid(columnspan=3)
+#loss
+loss=Tkinter.Entry(labelframe2,width=20)
+loss.grid(row=0, column=1)
+Label(labelframe2,text="  丢包：",width=20).grid(row=0, column=0)
+Label(labelframe2,text="%",width=10).grid(row=0, column=2)
+#delay
+delay=Tkinter.Entry(labelframe2,width=20)
+delay.grid(row=1, column=1)
+Label(labelframe2,text="  延迟：",width=20).grid(row=1, column=0)
+Label(labelframe2,text="ms",width=10).grid(row=1, column=2)
+#bandwidth
+bandwidth=Tkinter.Entry(labelframe2,width=20)
+bandwidth.grid(row=2, column=1)
+Label(labelframe2,text="  带宽：",width=20).grid(row=2, column=0)
+Label(labelframe2,text="bit/s",width=10).grid(row=2, column=2)
+
+#高级功能
+labelframe3=LabelFrame(top,text="高级功能：",width=300)
+labelframe3.grid(columnspan=3)
+Label(labelframe3,text=" IP地址 ",width=20).grid(row=0, column=1)
+Label(labelframe3,text=" 方向 ",width=6).grid(row=0, column=2)
+Label(labelframe3,text=" 带宽 ",width=10).grid(row=0, column=3)
+Label(labelframe3,text=" 丢包 ",width=10).grid(row=0, column=4)
+Label(labelframe3,text=" 延迟 ",width=10).grid(row=0, column=5)
+ip1=Tkinter.Entry(labelframe3,width=18)
+ip1.grid(row=1, column=1)
+ip2=Tkinter.Entry(labelframe3,width=18)
+ip2.grid(row=2, column=1)
+ip3=Tkinter.Entry(labelframe3,width=18)
+ip3.grid(row=3, column=1)
+direction1=ttk.Combobox(labelframe3,state="readonly",values=["src","dst"],width=5)
+direction1.set("src")
+direction1.grid(row=1, column=2)
+direction2=ttk.Combobox(labelframe3,state="readonly",values=["src","dst"],width=5)
+direction2.set("src")
+direction2.grid(row=2, column=2)
+direction3=ttk.Combobox(labelframe3,state="readonly",values=["src","dst"],width=5)
+direction3.set("src")
+direction3.grid(row=3, column=2)
+bandwidth1=Tkinter.Entry(labelframe3,width=6)
+bandwidth1.grid(row=1, column=3)
+bandwidth2=Tkinter.Entry(labelframe3,width=6)
+bandwidth2.grid(row=2, column=3)
+bandwidth3=Tkinter.Entry(labelframe3,width=6)
+bandwidth3.grid(row=3, column=3)
+loss1=Tkinter.Entry(labelframe3,width=6)
+loss1.grid(row=1, column=4)
+loss2=Tkinter.Entry(labelframe3,width=6)
+loss2.grid(row=2, column=4)
+loss3=Tkinter.Entry(labelframe3,width=6)
+loss3.grid(row=3, column=4)
+delay1=Tkinter.Entry(labelframe3,width=6)
+delay1.grid(row=1, column=5)
+delay2=Tkinter.Entry(labelframe3,width=6)
+delay2.grid(row=2, column=5)
+delay3=Tkinter.Entry(labelframe3,width=6)
+delay3.grid(row=3, column=5)
+
+
+def netem_start():
+    cmd="tc qdisc del dev "+network.get()+" root"
+    print cmd
+    os.system(cmd)
+    if len(bandwidth.get())>0:
+        cmd1="tc qdisc add dev "+network.get()+" root handle 1:0 tbf rate "+bandwidth.get()+"bit"+" buffer 100000 limit 100000"
+        cmd2="tc qdisc add dev "+network.get()+" parent 1:0 handle 10: netem "
+        if len(loss.get())>0:
+            cmd2=cmd2+"loss "+loss.get()
+        if len(delay.get())>0:
+            cmd2=cmd2+" delay "+delay.get()
+        print cmd1
+        print cmd2
+        os.system(cmd1)
+        os.system(cmd2)
+    else:
+        cmd1="tc qdisc add dev "+network.get()+" root netem "
+        if len(loss.get())>0:
+            cmd1=cmd1+"loss "+loss.get()
+        if len(delay.get())>0:
+            cmd1=cmd1+" delay "+delay.get()
+        print cmd1
+        os.system(cmd1)
+    cmd="tc -s -d qdisc show > temp"
+    if len(network.get())>0:
+        cmd="tc -s -d qdisc show dev "+network.get()+" > temp"
+    os.system(cmd)
+
+def netem_start_advance():
+    cmd="tc qdisc del dev "+network.get()+" root"
+    print cmd
+    os.system(cmd)
+    cmd="tc qdisc add dev "+network.get()+" handle 1: root htb"
+    print cmd
+    os.system(cmd)
+    cmd="tc class add dev "+network.get()+" parent 1: classid 1:1 htb rate 100mbit"
+    print cmd
+    os.system(cmd)
+    if len(ip1.get())>0:
+        cmd="tc class add dev "+network.get()+" parent 1:1 classid 1:11 htb rate "+bandwidth1.get()+"bit"
+        print cmd
+        os.system(cmd)
+        cmd="tc filter add dev "+network.get()+" protocol ip prio 1 u32 match ip "+direction1.get()+" "+ip1.get()+" flowid 1:11"
+        print cmd
+        os.system(cmd)
+        cmd="tc qdisc add dev "+network.get()+" parent 1:11 handle 10: netem "
+        if len(loss1.get())>0:
+            cmd=cmd+"loss "+loss1.get()+" "
+        if len(delay1.get())>0:
+            cmd=cmd+"delay "+delay1.get()
+        if len(loss1.get())>0 or len(delay1.get())>0:
+            print cmd
+            os.system(cmd)
+    if len(ip2.get())>0:
+        cmd="tc class add dev "+network.get()+" parent 1:1 classid 1:12 htb rate "+bandwidth2.get()+"bit"
+        print cmd
+        os.system(cmd)
+        cmd="tc filter add dev "+network.get()+" protocol ip prio 1 u32 match ip "+direction2.get()+" "+ip2.get()+" flowid 1:12"
+        print cmd
+        os.system(cmd)
+        cmd="tc qdisc add dev "+network.get()+" parent 1:12 handle 20: netem "
+        if len(loss2.get())>0:
+            cmd=cmd+"loss "+loss2.get()+" "
+        if len(delay2.get())>0:
+            cmd=cmd+"delay "+delay2.get()
+        if len(loss2.get())>0 or len(delay2.get())>0:
+            print cmd
+            os.system(cmd)
+    if len(ip3.get())>0:
+        cmd="tc class add dev "+network.get()+" parent 1:1 classid 1:13 htb rate "+bandwidth3.get()+"bit"
+        print cmd
+        os.system(cmd)
+        cmd="tc filter add dev "+network.get()+" protocol ip prio 1 u32 match ip "+direction3.get()+" "+ip3.get()+" flowid 1:13"
+        print cmd
+        os.system(cmd)
+        cmd="tc qdisc add dev "+network.get()+" parent 1:13 handle 30: netem "
+        if len(loss3.get())>0:
+            cmd=cmd+"loss "+loss3.get()+" "
+        if len(delay3.get())>0:
+            cmd=cmd+"delay "+delay3.get()
+        if len(loss3.get())>0 or len(delay3.get())>0:
+            print cmd
+            os.system(cmd)
+        
+    
+start=Tkinter.Button(labelframe2,text="开始",width=3,command=netem_start)
+start.grid(row=0, column=4)
+start_advance=Tkinter.Button(labelframe3,text="开始",width=3,command=netem_start_advance)
+start_advance.grid(row=4, column=2)
+
+def netem_stop():
+    cmd="tc qdisc del dev "+network.get()+" root"
+    os.system(cmd)
+
+stop=Tkinter.Button(labelframe2,text="停止",width=3,command=netem_stop)
+stop.grid(row=1, column=4)
+stop_advance=Tkinter.Button(labelframe3,text="停止",width=3,command=netem_stop)
+stop_advance.grid(row=4, column=3)
+exit=Tkinter.Button(labelframe2,text="退出",width=3,command=top.quit)
+exit.grid(row=2, column=4)
+exit_advance=Tkinter.Button(labelframe3,text="退出",width=3,command=top.quit)
+exit_advance.grid(row=4, column=4)
+
+Tkinter.mainloop()
+
