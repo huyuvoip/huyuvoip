@@ -6,10 +6,8 @@ import ttk
 import os
 from Tkinter import *
 
-
 top=Tkinter.Tk()
-
-top.geometry('400x330+0+0') 
+top.geometry('400x400+0+0') 
 Label(top,text="Netem").grid(row=0, column=1)
 #get the network interface card
 os.system("ifconfig -s > temp")
@@ -88,34 +86,53 @@ delay2.grid(row=2, column=5)
 delay3=Tkinter.Entry(labelframe3,width=6)
 delay3.grid(row=3, column=5)
 
+#运行状态
+var = StringVar()
+status=Message(top, textvariable=var,fg="red",width=360)
+var.set("当前状态： \n未启动")
+status.grid(columnspan=3)
 
 def netem_start():
     cmd="tc qdisc del dev "+network.get()+" root"
     print cmd
     os.system(cmd)
+    result="正在模拟：\n"
     if len(bandwidth.get())>0:
         cmd1="tc qdisc add dev "+network.get()+" root handle 1:0 tbf rate "+bandwidth.get()+"bit"+" buffer 100000 limit 100000"
         cmd2="tc qdisc add dev "+network.get()+" parent 1:0 handle 10: netem "
+        result=result+"带宽："+bandwidth.get()+"bit\n"
         if len(loss.get())>0:
             cmd2=cmd2+"loss "+loss.get()
+            result=result+"丢包："+loss.get()+"%\n"
+        else:
+            result=result+"丢包：0%"
         if len(delay.get())>0:
             cmd2=cmd2+" delay "+delay.get()
+            result=result+"延迟："+delay.get()+"ms\n"
+        else:
+            result=result+"延迟：0ms"
         print cmd1
         print cmd2
         os.system(cmd1)
         os.system(cmd2)
     else:
         cmd1="tc qdisc add dev "+network.get()+" root netem "
+        result=result+"带宽：NULL\n"
         if len(loss.get())>0:
             cmd1=cmd1+"loss "+loss.get()
+            result=result+"丢包："+loss.get()+"%\n"
+        else:
+            result=result+"丢包：0%"
         if len(delay.get())>0:
             cmd1=cmd1+" delay "+delay.get()
+            result=result+"延迟："+delay.get()+"ms\n"
+        else:
+            result=result+"延迟：0ms"
         print cmd1
         os.system(cmd1)
-    cmd="tc -s -d qdisc show > temp"
-    if len(network.get())>0:
-        cmd="tc -s -d qdisc show dev "+network.get()+" > temp"
-    os.system(cmd)
+
+    var.set(result)
+    status.grid(columnspan=3)
 
 def netem_start_advance():
     cmd="tc qdisc del dev "+network.get()+" root"
@@ -127,6 +144,7 @@ def netem_start_advance():
     cmd="tc class add dev "+network.get()+" parent 1: classid 1:1 htb rate 100mbit"
     print cmd
     os.system(cmd)
+    result="正在模拟：\n"
     if len(ip1.get())>0:
         cmd="tc class add dev "+network.get()+" parent 1:1 classid 1:11 htb rate "+bandwidth1.get()+"bit"
         print cmd
@@ -135,10 +153,13 @@ def netem_start_advance():
         print cmd
         os.system(cmd)
         cmd="tc qdisc add dev "+network.get()+" parent 1:11 handle 10: netem "
+        result=result+direction1.get()+"："+ip1.get()+" 带宽："+bandwidth1.get()+"bit"
         if len(loss1.get())>0:
             cmd=cmd+"loss "+loss1.get()+" "
+            result=result+" 丢包："+loss1.get()+"%"
         if len(delay1.get())>0:
             cmd=cmd+"delay "+delay1.get()
+            result=result+" 延迟："+delay1.get()+"ms\n"
         if len(loss1.get())>0 or len(delay1.get())>0:
             print cmd
             os.system(cmd)
@@ -150,10 +171,13 @@ def netem_start_advance():
         print cmd
         os.system(cmd)
         cmd="tc qdisc add dev "+network.get()+" parent 1:12 handle 20: netem "
+        result=result+direction2.get()+"："+ip2.get()+" 带宽："+bandwidth2.get()+"bit"
         if len(loss2.get())>0:
             cmd=cmd+"loss "+loss2.get()+" "
+            result=result+" 丢包："+loss2.get()+"%"
         if len(delay2.get())>0:
             cmd=cmd+"delay "+delay2.get()
+            result=result+" 延迟："+delay2.get()+"ms\n"
         if len(loss2.get())>0 or len(delay2.get())>0:
             print cmd
             os.system(cmd)
@@ -165,14 +189,19 @@ def netem_start_advance():
         print cmd
         os.system(cmd)
         cmd="tc qdisc add dev "+network.get()+" parent 1:13 handle 30: netem "
+        result=result+direction3.get()+"："+ip3.get()+" 带宽："+bandwidth3.get()+"bit"
         if len(loss3.get())>0:
             cmd=cmd+"loss "+loss3.get()+" "
+            result=result+" 丢包："+loss3.get()+"%"
         if len(delay3.get())>0:
             cmd=cmd+"delay "+delay3.get()
+            result=result+" 延迟："+delay3.get()+"ms\n"
         if len(loss3.get())>0 or len(delay3.get())>0:
             print cmd
             os.system(cmd)
-        
+    print result
+    var.set(result)
+    status.grid(column=0,columnspan=3)
     
 start=Tkinter.Button(labelframe2,text="开始",width=3,command=netem_start)
 start.grid(row=0, column=4)
@@ -182,6 +211,8 @@ start_advance.grid(row=4, column=2)
 def netem_stop():
     cmd="tc qdisc del dev "+network.get()+" root"
     os.system(cmd)
+    var.set("当前状态： \n未启动")
+    status.grid(columnspan=3)
 
 stop=Tkinter.Button(labelframe2,text="停止",width=3,command=netem_stop)
 stop.grid(row=1, column=4)
